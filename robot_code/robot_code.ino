@@ -158,19 +158,22 @@ int readCommand()
   radio.startListening();
 }*/
 /***********************************Line tracing***********************************/
-//read the light levels (ambient)
-void lineTracker()
+//the robot will read light values and perform commands based on the line color
+int lineTracker()
 {
   //check if there is an ambient light reading
   //if not exit the function
-  if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) ||
-     !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
+  if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
-    Serial.println(blue_light);
-  if(blue_light > 200)
-  {
-     driveMotor(0, 0, LOW, HIGH);
-  }
+  //print the blue light intensity  
+  Serial.println(blue_light);
+    
+  //if blue is detected stop the robot
+  //else have the robot drive forward
+  if(blue_light > 100)
+    return STOP;
+  else
+    return UP;
 } 
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
@@ -197,14 +200,14 @@ void loop()
     forwardDisable==0;
   */
   int command = readCommand();
-  //if the line tracker state is true
+  
+  //if the line tracker state is true and command is not A
   //run the linetracking function
-  if(disabled)
+  if(disabled && command != A)
   {
-    lineTracker();
-    if(command != A)
-      command = UP;
+    command = lineTracker();
   }
+  
   //get the command from the controller
   //give robot commands
     switch(command)
@@ -223,7 +226,7 @@ void loop()
         break;
       case A:  //A BUTTON
         //toggle the lineTracker function
-        !disabled;
+        disabled = !disabled;
         break;
       case B:  //B BUTTON
         //do something
