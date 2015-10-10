@@ -61,6 +61,7 @@ int gyroXTemp = 0;
 int gyroZTemp = 0;
 bool lineTrackerState = false;
 bool disabled = false;
+bool forwardDisable = false;
 
 
 //globals for the line sensor
@@ -175,19 +176,23 @@ void lineTracker()
 //Every 1ms it will take readings and calculate speed, then print out values
 void loop()
 {
-  //US Ranger ping for distance
-  //digitalWrite(trigPin, LOW);
-  //delayMicroseconds(5);
-  //digitalWrite(trigPin, HIGH);
-  //delayMicroseconds(10);
-  //digitalWrite(trigPin, LOW);
-  //duration = pulseIn(echoPin, HIGH);
-  //cm = (duration/2) / 29.1;
+   //US Ranger ping for distance
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  cm = (duration/2) / 29.1;
   
   //print distance
-  //Serial.print("Distance = ");
-  //Serial.print(cm);
-  //Serial.println("cm");
+  Serial.print("Distance = ");
+  Serial.print(cm);
+  Serial.println("cm");
+  if (cm < 4)
+    forwardDisable==1;
+  else
+    forwardDisable==0;
   
   int command = readCommand();
   //if the line tracker state is true
@@ -201,7 +206,8 @@ void loop()
     switch(command)
     {
       case UP:  //Drive FORWARD
-        driveMotor(250, 250, HIGH, HIGH);
+        if(!forwardDisable)
+          driveMotor(250, 250, HIGH, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
         driveMotor(250, 250, LOW, LOW);
