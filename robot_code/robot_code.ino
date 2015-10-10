@@ -163,7 +163,8 @@ void lineTracker()
 {
   //check if there is an ambient light reading
   //if not exit the function
-  if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light))
+  if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) ||
+     !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
   
   //TODO: write code on implementing line tracking  
