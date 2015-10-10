@@ -17,7 +17,14 @@ signal coming from the RF24L01 transceiver.
 * NES data pin -> pin 4
 *
 ***The RF24L01 transmitter***
-*
+* vcc pin -> 3.3v
+* CSN pin -> pin 10
+* MOSI pin -> pin 11
+* IRQ pin -> pin 8
+* GND pin -> pin gnd
+* CE pin -> pin 9
+* SCK pin -> pin 13
+* MISO pin -> pin 12
 *
 *****The LCD display*****
 * LCD pin 1 -> ground
@@ -130,19 +137,19 @@ void loop()
 
   // if the button is pressed right now and it's last state was UNPRESSED...
   if(state & NES_A) 
-    sendCommand(A, "A");          //send command A
+    sendCommand(A, "A");            //send command A
   if(state & NES_B)
-    sendCommand(B, "B");          //send command B
+    sendCommand(B, "B");            //send command B
   if(state & NES_UP) 
     sendCommand(UP, "UP");          //send command UP
   if(state & NES_LEFT)
-    sendCommand(LEFT, "LEFT");          //send command LEFT
+    sendCommand(LEFT, "LEFT");      //send command LEFT
   if(state & NES_RIGHT)
-    sendCommand(RIGHT, "RIGHT");          //send command RIGH
+    sendCommand(RIGHT, "RIGHT");    //send command RIGHT
   if((state & NES_DOWN))
-    sendCommand(DOWN, "DOWN");          //send command
+    sendCommand(DOWN, "DOWN");      //send command DOWN
   if(state & NES_SELECT)
-    sendCommand(SELECT, "SELECT");          //send command
+    sendCommand(SELECT, "SELECT");  //send command SELECT
   if(state & NES_START)
-    sendCommand(START, "START");          //send command
+    sendCommand(START, "START");    //send command START
 }
