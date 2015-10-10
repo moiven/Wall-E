@@ -31,7 +31,7 @@
 #define B           6
 #define START       7
 #define SELECT      8
-#define D_UNPRESSED 9
+#define STOP 9
 
 // Define a variable encoderNew, as an instantaneous encoder reading
 #define encoderNew myEnc.read()
@@ -97,7 +97,7 @@ void setup() {
   apds.enableLightSensor(false);
 
   //initialize US Ranger
-    pinMode(trigPin, OUTPUT);
+  pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   
   // Set the PA Level low to prevent power supply related issues since this is a
@@ -110,6 +110,9 @@ void setup() {
   
   // Start the radio listening for data
   radio.startListening();
+  
+  // Wait for initialization and calibration to finish
+  delay(500);
 }
 /*******************************drive motors**********************************/
 //function to drive both motors from given parameters
@@ -135,11 +138,7 @@ int readCommand()
     tread = millis();
   }
   else if((millis() - tread) > 100)
-  { 
-    Serial.println("failed to recieve");
-    command = D_UNPRESSED;
-    
-  }
+    command = STOP;
   return command;
 }
 /*********************************Send radio data********************************/
@@ -167,8 +166,11 @@ void lineTracker()
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) ||
      !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
-  
-  //TODO: write code on implementing line tracking  
+    Serial.println(blue_light);
+  if(blue_light > 200)
+  {
+     driveMotor(0, 0, LOW, HIGH);
+  }
 } 
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
@@ -176,7 +178,7 @@ void lineTracker()
 //Every 1ms it will take readings and calculate speed, then print out values
 void loop()
 {
-   //US Ranger ping for distance
+   /* //US Ranger ping for distance
   digitalWrite(trigPin, LOW);
   delayMicroseconds(5);
   digitalWrite(trigPin, HIGH);
@@ -193,20 +195,21 @@ void loop()
     forwardDisable==1;
   else
     forwardDisable==0;
-  
+  */
   int command = readCommand();
   //if the line tracker state is true
   //run the linetracking function
   if(disabled)
+  {
     lineTracker();
+    if(command != A)
+      command = UP;
+  }
   //get the command from the controller
   //give robot commands
-  if(!disabled)
-  {
     switch(command)
     {
       case UP:  //Drive FORWARD
-        if(!forwardDisable)
           driveMotor(250, 250, HIGH, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
@@ -218,25 +221,21 @@ void loop()
       case RIGHT:  //Turn RIGHT
         driveMotor(100, 100, LOW, HIGH);
         break;
-      case D_UNPRESSED:
-        driveMotor(0, 0, LOW, HIGH);
+      case A:  //A BUTTON
+        //toggle the lineTracker function
+        !disabled;
         break;
+      case B:  //B BUTTON
+        //do something
+        break;
+      case START:
+        //do something
+        break;
+      case SELECT:
+        //do something
+        break;
+      case STOP:
+        driveMotor(0, 0, LOW, HIGH);
+        break;  
     }
-  }
-  switch(command)
-  {
-    case A:  //A BUTTON
-      //toggle the lineTracker function
-      !disabled;
-      break;
-    case B:  //B BUTTON
-      //do something
-      break;
-    case START:
-      //do something
-      break;
-    case SELECT:
-      //do something
-      break;  
-  }
 }
