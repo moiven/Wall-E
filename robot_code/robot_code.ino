@@ -159,6 +159,7 @@ int readCommand()
 }*/
 /***********************************Line tracing***********************************/
 //the robot will read light values and perform commands based on the line color
+/*
 int lineTracker()
 {
   //check if there is an ambient light reading
@@ -175,37 +176,38 @@ int lineTracker()
   else
     return UP;
 } 
+*/
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
 // If it is before 1second, it sends o (off), afterwards it send 255(on).
 //Every 1ms it will take readings and calculate speed, then print out values
 void loop()
 {
-   /* //US Ranger ping for distance
+  //US Ranger ping for distance
   digitalWrite(trigPin, LOW);
   delayMicroseconds(5);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
+  duration = pulseIn(echoPin, HIGH, 2000);
   cm = (duration/2) / 29.1;
   
   //print distance
   Serial.print("Distance = ");
   Serial.print(cm);
   Serial.println("cm");
-  if (cm < 4)
-    forwardDisable==1;
+  if (cm < 6 && cm > 0)
+    forwardDisable=1;
   else
-    forwardDisable==0;
-  */
+    forwardDisable=0;
+  
   int command = readCommand();
   
   //if the line tracker state is true and command is not A
   //run the linetracking function
   if(disabled && command != A)
   {
-    command = lineTracker();
+//    command = lineTracker();
   }
   
   //get the command from the controller
@@ -213,7 +215,11 @@ void loop()
     switch(command)
     {
       case UP:  //Drive FORWARD
+        Serial.println(forwardDisable);
+        if(forwardDisable==0)
           driveMotor(250, 250, HIGH, HIGH);
+        else
+          driveMotor(0, 0, LOW, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
         driveMotor(250, 250, LOW, LOW);
