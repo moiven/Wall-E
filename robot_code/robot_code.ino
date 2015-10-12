@@ -131,15 +131,30 @@ void driveMotor(int m1_speed, int m2_speed, bool m1_dir, bool m2_dir)
 int readCommand()
 {
   int command;
+  int static resetLoops;
   static unsigned long tread ;
   //read command from the controller if available
   if(radio.available())
   {
     radio.read(&command, sizeof(int));
     tread = millis();
+    resetLoops = 0;
   }
-  else if((millis() - tread) > 100)
+  else if((millis() - tread) > 100){
     command = STOP;
+    if(resetLoops==0)
+    {
+      Serial.print("reset");
+      void(* resetFunc) (void) = 0;
+      resetLoops++;
+    }
+    else
+      {
+        resetLoops++;
+        if (resetLoops>5)
+          resetLoops=0;
+      }
+  }
   return command;
 }
 /*********************************Send radio data********************************/

@@ -70,6 +70,7 @@ byte state = 0; // Buttons state (it ends up looking like a bitmap with 1's for 
 
 void setup() 
 {  
+  //Serial.begin(9600);
   lcd.begin(16, 2); 
   radio.begin();
 
@@ -91,10 +92,26 @@ void setup()
 //print to lcd screen
 void sendCommand(int command, String message)
 {
+   int static resetLoops;
   //send and print command
   //but print "fails" if it fails
-  if(!radio.write(&command, sizeof(int)))
+  if(!radio.write(&command, sizeof(int))){
     message = "failed";
+    if(resetLoops==0)
+     {
+      void(* resetFunc) (void) = 0;
+      resetLoops++;
+      }
+    else
+      {
+        resetLoops++;
+        if (resetLoops>5)
+          resetLoops=0;
+      }
+  }
+  else
+  resetLoops =0;
+  
   if(history != message)
   {
     lcd.clear();
