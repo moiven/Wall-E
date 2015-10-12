@@ -31,7 +31,8 @@
 #define B           6
 #define START       7
 #define SELECT      8
-#define STOP 9
+#define STOP        9
+#define ERR         10
 
 // Define a variable encoderNew, as an instantaneous encoder reading
 #define encoderNew myEnc.read()
@@ -159,24 +160,29 @@ int readCommand()
 }*/
 /***********************************Line tracing***********************************/
 //the robot will read light values and perform commands based on the line color
-/*
 int lineTracker()
 {
   //check if there is an ambient light reading
-  //if not exit the function
+  //if it fails it exits the funtion
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
-    return;
+    return ERR;
   //print the blue light intensity  
-  Serial.println(blue_light);
+  /*Serial.print("red = ");
+  Serial.print(red_light);
+  Serial.print(" blue = ");
+  Serial.print(blue_light);
+  Serial.print(" green = ");
+  Serial.print(green_light);
+  Serial.print(" AmbientLight = ");
+  Serial.println(ambient_light);*/
     
   //if blue is detected stop the robot
   //else have the robot drive forward
-  if(blue_light > 100)
+  if(blue_light < 200)
     return STOP;
   else
-    return UP;
+    return DOWN;
 } 
-*/
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
 // If it is before 1second, it sends o (off), afterwards it send 255(on).
@@ -193,9 +199,9 @@ void loop()
   cm = (duration/2) / 29.1;
   
   //print distance
-  Serial.print("Distance = ");
-  Serial.print(cm);
-  Serial.println("cm");
+  //Serial.print("Distance = ");
+  //Serial.print(cm);
+  //Serial.println("cm");
   if (cm < 6 && cm > 0)
     forwardDisable=1;
   else
@@ -205,9 +211,10 @@ void loop()
   
   //if the line tracker state is true and command is not A
   //run the linetracking function
-  if(disabled && command != A)
+  if(disabled)
   {
-//    command = lineTracker();
+    if(command != B)
+      command = lineTracker();
   }
   
   //get the command from the controller
@@ -215,7 +222,7 @@ void loop()
     switch(command)
     {
       case UP:  //Drive FORWARD
-        Serial.println(forwardDisable);
+        //Serial.println(forwardDisable);
         if(forwardDisable==0)
           driveMotor(250, 250, HIGH, HIGH);
         else
@@ -231,20 +238,26 @@ void loop()
         driveMotor(100, 100, LOW, HIGH);
         break;
       case A:  //A BUTTON
-        //toggle the lineTracker function
-        disabled = !disabled;
+        //turn on autonamous
+        // activate the lineTracker function
+        disabled = true;
         break;
       case B:  //B BUTTON
+        //turn off autonamous
+        //deactivate the lineTracker function
+        disabled = false;
+        break;
+      case START:  //Start button
         //do something
         break;
-      case START:
+      case SELECT:  //Select button
         //do something
         break;
-      case SELECT:
-        //do something
-        break;
-      case STOP:
+      case STOP:  //Stop the robot driving
         driveMotor(0, 0, LOW, HIGH);
-        break;  
+        break;
+      case ERR:  //Stop the robot and report error
+        driveMotor(0, 0, LOW, HIGH);
+        break;
     }
 }
