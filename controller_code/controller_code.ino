@@ -92,25 +92,12 @@ void setup()
 //print to lcd screen
 void sendCommand(int command, String message)
 {
-   int static resetLoops;
   //send and print command
   //but print "fails" if it fails
-  if(!radio.write(&command, sizeof(int))){
+  if(!radio.write(&command, sizeof(int)))
+  {
     message = "failed";
-    if(resetLoops==0)
-     {
-      void(* resetFunc) (void) = 0;
-      resetLoops++;
-      }
-    else
-      {
-        resetLoops++;
-        if (resetLoops>5)
-          resetLoops=0;
-      }
   }
-  else
-  resetLoops =0;
   
   if(history != message)
   {

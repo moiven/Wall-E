@@ -3,8 +3,8 @@
 #include "RF24.h"
 //Include an Encoder library, that let's us easily read the encoders
 #include <Encoder.h>
-//the APDS9960 library by sparkfun
 #include <Wire.h>
+//the APDS9960 library by sparkfun
 #include <SparkFun_APDS9960.h>
 
 //Define pin locations with names
@@ -131,29 +131,16 @@ void driveMotor(int m1_speed, int m2_speed, bool m1_dir, bool m2_dir)
 int readCommand()
 {
   int command;
-  int static resetLoops;
   static unsigned long tread ;
   //read command from the controller if available
   if(radio.available())
   {
     radio.read(&command, sizeof(int));
     tread = millis();
-    resetLoops = 0;
   }
-  else if((millis() - tread) > 100){
+  else if((millis() - tread) > 100)
+  {
     command = STOP;
-    if(resetLoops==0)
-    {
-      Serial.print("reset");
-      void(* resetFunc) (void) = 0;
-      resetLoops++;
-    }
-    else
-      {
-        resetLoops++;
-        if (resetLoops>5)
-          resetLoops=0;
-      }
   }
   return command;
 }
@@ -210,14 +197,14 @@ void loop()
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH, 2000);
+  duration = pulseIn(echoPin, HIGH, 10000);
   cm = (duration/2) / 29.1;
   
   //print distance
-  //Serial.print("Distance = ");
-  //Serial.print(cm);
-  //Serial.println("cm");
-  if (cm < 6 && cm > 0)
+  Serial.print("Distance = ");
+  Serial.print(cm);
+  Serial.println("cm");
+  if (cm < 15 && cm > 0)
     forwardDisable=1;
   else
     forwardDisable=0;
@@ -239,12 +226,12 @@ void loop()
       case UP:  //Drive FORWARD
         //Serial.println(forwardDisable);
         if(forwardDisable==0)
-          driveMotor(250, 250, HIGH, HIGH);
+          driveMotor(250, 250, LOW, LOW);
         else
           driveMotor(0, 0, LOW, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
-        driveMotor(250, 250, LOW, LOW);
+        driveMotor(250, 250, HIGH, HIGH);
         break;
       case LEFT:  //Turn LEFT
         driveMotor(100, 100, HIGH, LOW);
