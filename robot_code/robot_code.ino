@@ -60,8 +60,8 @@ float omega2 =0;
 float ts = 0.0;
 int gyroXTemp = 0;
 int gyroZTemp = 0;
-bool lineTrackerState = false;
-bool disabled = false;
+bool stopCompletely = false;
+bool autonomous = false;
 bool forwardDisable = false;
 
 
@@ -139,9 +139,7 @@ int readCommand()
     tread = millis();
   }
   else if((millis() - tread) > 100)
-  {
     command = STOP;
-  }
   return command;
 }
 /*********************************Send radio data********************************/
@@ -162,28 +160,30 @@ int readCommand()
 }*/
 /***********************************Line tracing***********************************/
 //the robot will read light values and perform commands based on the line color
-int lineTracker()
+void lineTracker(int& command, bool& stopCompletely)
 {
   //check if there is an ambient light reading
   //if it fails it exits the funtion
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
-    return ERR;
-  //print the blue light intensity  
-  /*Serial.print("red = ");
-  Serial.print(red_light);
-  Serial.print(" blue = ");
-  Serial.print(blue_light);
-  Serial.print(" green = ");
-  Serial.print(green_light);
-  Serial.print(" AmbientLight = ");
-  Serial.println(ambient_light);*/
-    
-  //if blue is detected stop the robot
-  //else have the robot drive forward
-  if(blue_light < 200)
-    return STOP;
+    return;
+  //Serial.print(red_light);
+  //Serial.print(" ");
+  //Serial.println(green_light);
+  //Serial.print(" ");
+  //Serial.println(blue_light);
+  //change nothing if A or B are chosen
+  if(command == A || command == B)
+    return;
+  //stop the robot if it detects a line
+  //else overwrite the command to up
+  if(green_light < 100 || stopCompletely)
+  {
+    //Serial.println(stopCompletely);
+    stopCompletely = true;
+    command = STOP;
+  }
   else
-    return DOWN;
+    command = UP;
 } 
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
@@ -191,6 +191,9 @@ int lineTracker()
 //Every 1ms it will take readings and calculate speed, then print out values
 void loop()
 {
+  //get the command from the controller
+  int command = readCommand();
+  
   //US Ranger ping for distance
   digitalWrite(trigPin, LOW);
   delayMicroseconds(5);
@@ -200,24 +203,15 @@ void loop()
   duration = pulseIn(echoPin, HIGH, 10000);
   cm = (duration/2) / 29.1;
   
-  //print distance
-  Serial.print("Distance = ");
-  Serial.print(cm);
-  Serial.println("cm");
   if (cm < 15 && cm > 0)
     forwardDisable=1;
   else
     forwardDisable=0;
-  
-  int command = readCommand();
-  
-  //if the line tracker state is true and command is not A
-  //run the linetracking function
-  if(disabled)
-  {
-    if(command != B)
-      command = lineTracker();
-  }
+ 
+  //the lineTracker will overwrite commands other than A or B
+  //if autonomous is enabled (autonomous = true)
+  if(autonomous)
+    lineTracker(command, stopCompletely);
   
   //get the command from the controller
   //give robot commands
@@ -226,28 +220,27 @@ void loop()
       case UP:  //Drive FORWARD
         //Serial.println(forwardDisable);
         if(forwardDisable==0)
-          driveMotor(250, 250, LOW, LOW);
+          driveMotor(200, 200, LOW, LOW);
         else
           driveMotor(0, 0, LOW, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
-        driveMotor(250, 250, HIGH, HIGH);
+        driveMotor(200, 200, HIGH, HIGH);
         break;
       case LEFT:  //Turn LEFT
-        driveMotor(100, 100, HIGH, LOW);
+        driveMotor(150, 150, HIGH, LOW);
         break;
       case RIGHT:  //Turn RIGHT
-        driveMotor(100, 100, LOW, HIGH);
+        driveMotor(150, 150, LOW, HIGH);
         break;
       case A:  //A BUTTON
-        //turn on autonamous
         // activate the lineTracker function
-        disabled = true;
+        autonomous = true;
         break;
       case B:  //B BUTTON
-        //turn off autonamous
         //deactivate the lineTracker function
-        disabled = false;
+        stopCompletely = false;
+        autonomous = false;
         break;
       case START:  //Start button
         //do something
