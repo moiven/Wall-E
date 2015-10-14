@@ -139,7 +139,7 @@ int readCommand()
     tread = millis();
   }
   //add a timeout
-  else if((millis() - tread) > 50)
+  else if((millis() - tread) > 100)
     command = STOP;
   return command;
 }
@@ -168,11 +168,16 @@ void lineTracker(int& command, bool& stopCompletely)
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
   //change nothing if A or B are chosen
+  //Serial.print(red_light);
+  //Serial.print(" ");
+  //Serial.print(green_light);
+  //Serial.print(" ");
+  //Serial.println(blue_light);
   if(command == A || command == B)
     return;
   //stop the robot if it detects a line
   //else overwrite the command to up
-  if(red_light < 110 || stopCompletely)
+  if(green_light < 1500 || stopCompletely)
   {
     //Serial.println(stopCompletely);
     stopCompletely = true;
@@ -199,6 +204,8 @@ void loop()
   duration = pulseIn(echoPin, HIGH, 10000);
   cm = (duration/2) / 29.1;
   
+  Serial.println(cm);
+  
   if (cm < 15 && cm > 0)
     forwardDisable=1;
   else
@@ -216,12 +223,12 @@ void loop()
       case UP:  //Drive FORWARD
         //Serial.println(forwardDisable);
         if(forwardDisable==0)
-          driveMotor(200, 200, LOW, LOW);
+          driveMotor(100, 100, LOW, LOW);
         else
           driveMotor(0, 0, LOW, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
-        driveMotor(200, 200, HIGH, HIGH);
+        driveMotor(250, 200, HIGH, HIGH);
         break;
       case LEFT:  //Turn LEFT
         driveMotor(150, 150, HIGH, LOW);
