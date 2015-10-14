@@ -138,7 +138,8 @@ int readCommand()
     radio.read(&command, sizeof(int));
     tread = millis();
   }
-  else if((millis() - tread) > 100)
+  //add a timeout
+  else if((millis() - tread) > 50)
     command = STOP;
   return command;
 }
@@ -166,17 +167,12 @@ void lineTracker(int& command, bool& stopCompletely)
   //if it fails it exits the funtion
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
-  //Serial.print(red_light);
-  //Serial.print(" ");
-  //Serial.println(green_light);
-  //Serial.print(" ");
-  //Serial.println(blue_light);
   //change nothing if A or B are chosen
   if(command == A || command == B)
     return;
   //stop the robot if it detects a line
   //else overwrite the command to up
-  if(green_light < 100 || stopCompletely)
+  if(red_light < 110 || stopCompletely)
   {
     //Serial.println(stopCompletely);
     stopCompletely = true;
