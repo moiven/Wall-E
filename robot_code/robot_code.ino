@@ -62,10 +62,6 @@ int gyroXTemp = 0;
 int gyroZTemp = 0;
 bool stopCompletely = false;
 bool autonomous = false;
-//variables for the rangerInterrupt
-volatile unsigned long int_time, out_time;
-volatile bool st = false;
-
 
 //globals for the line sensor
 uint16_t ambient_light = 0;
@@ -94,10 +90,6 @@ void setup() {
   //Define gyroscope pins
   pinMode( gyroX, INPUT);
   pinMode( gyroZ, INPUT);
-  
-  //initializing an interrupt function called 'rangerInterrupt'
-  //interrupt rutine starts on a changing signal (low to high or high to low)
-/*  attachInterrupt(digitalPinToInterrupt(ECHO_PIN), rangerInterrupt, CHANGE);  */
 
   //starting the radio
   radio.begin();
@@ -191,27 +183,18 @@ void lineTracker(int& command, bool& stopCompletely)
 /**************************************Ultrasonic Ranger*****************************/
 //Send a pulse to activate the usRanger
 //use interrupts to get the return time
-//will overwrite the command to stop if return time is roughly < 20cm
+//will overwrite the command to stop if return time is roughly < 15cm
 void usRanger(int& command)
 {
+  unsigned int dur;
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(7);          //delay stability for the interrupt
-  if(out_time - int_time < 1200)
+  dur = pulseIn(ECHO_PIN, HIGH, 1000);    //will return 0 if it goes over a 1100us timeout, yes 1100us not 1000us
+  //only overwrite UP commands
+  if(dur && command == UP)
     command = STOP;
 }
-/*************************************Ranger ISR***********************************/
-//records the time micros of the initial low to high pulse
-//and the ending high to low pulse
-/*void rangerInterrupt()
-{
-  if(!st)
-    int_time = micros();
-  else if(st)
-     out_time = micros();
-  st = !st;
-}*/
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
 // If it is before 1second, it sends o (off), afterwards it send 255(on).
@@ -226,13 +209,13 @@ void loop()
     lineTracker(command, stopCompletely);
     
   //usRanger function call
-/*  usRanger(command);  */
+  usRanger(command);
   
   //give robot commands
   switch(command)
   {
     case UP:  //Drive FORWARD
-      driveMotor(250, 250, LOW, HIGH);
+      driveMotor(250, 250, LOW, LOW);
       break;
     case DOWN:  //Drive BACKWARDS
       driveMotor(250, 200, HIGH, HIGH);
