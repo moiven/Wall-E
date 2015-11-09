@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include "RF24.h"
 #include <LiquidCrystal.h>
+//#include <printf.h>
 
 /**
 This is the code for controlling the robot wirelessly. The controller operates using an arduino Uno.
@@ -65,13 +66,24 @@ NESpad nintendo = NESpad(2,3,4); //(strobe, clock, data);
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(A1, A2, 5, A0, 6, 7);
 
-byte addresses[][6] = {"8Node","9Node"};
+//byte addresses[][6] = {"8abde"};
+//byte addresses[][6] = {"8Node","9Node"};
 byte state = 0; // Buttons state (it ends up looking like a bitmap with 1's for buttons that are pressed and 0's for unpressed)
 
 void setup() 
 {  
   //Serial.begin(9600);
+  //printf_begin();
+  
   lcd.begin(16, 2); 
+
+  radio.begin();
+  radio.setChannel(57); //Sets frequency of channel to 2400+x Hz, if x=107 Hz=2507, max = 2525Hz
+  radio.setPALevel(RF24_PA_MAX); //sets broadcast amplitude, default=max
+  //radio.openWritingPipe(addresses[0]);
+  radio.openWritingPipe(121501163909);
+  radio.stopListening();
+  /*
   radio.begin();
 
   // Set the PA Level low to prevent power supply related issues since this is a
@@ -84,6 +96,7 @@ void setup()
   
   // Start the radio listening for data
   radio.stopListening();
+  */
   //notify when the arduino is ready
   lcd.print("Ready");
 }
@@ -137,6 +150,7 @@ void sendCommand(int command, String message)
 void loop() 
 {  
   //readRadio();
+  //radio.printDetails();
   state = nintendo.buttons();
 
   // if the button is pressed right now and it's last state was UNPRESSED...

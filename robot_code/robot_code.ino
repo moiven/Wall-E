@@ -4,6 +4,7 @@
 //Include an Encoder library, that let's us easily read the encoders
 #include <Encoder.h>
 #include <Wire.h>
+//#include <printf.h>
 //the APDS9960 library by sparkfun
 #include <SparkFun_APDS9960.h>
 
@@ -19,8 +20,8 @@
 #define encoderB_M2 19     //Encoder 2 for Motor 2
 #define gyroX       0
 #define gyroZ       1
-#define TRIG_PIN    30    //Trig
-#define ECHO_PIN    31    //Echo
+#define trigPin 30    //Trig
+#define echoPin 31    //Echo
 
 //controller recieve commands
 #define UP          1
@@ -48,9 +49,6 @@ Encoder myEnc(encoderA_M1, encoderB_M1);
 //Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 40 & 53
 RF24 radio(40,53);  //for the mega
 
-//The address is the same for both transevers
-byte addresses[][6] = {"8Node","9Node"};
-
 //Define variables necessary for our speed calcs
 unsigned long t, milliOld;
 unsigned long encoderOld = 0;
@@ -62,6 +60,8 @@ int gyroXTemp = 0;
 int gyroZTemp = 0;
 bool stopCompletely = false;
 bool autonomous = false;
+bool forwardDisable = false;
+
 
 //globals for the line sensor
 uint16_t ambient_light = 0;
@@ -74,31 +74,35 @@ uint16_t blue_light = 0;
 long duration, cm;
 /**************************************Setup*************************************/
 void setup() {
-//  Serial.begin(9600);
-  // Set the enable pin high (necessary for driving the motor)
+  //Serial.begin(9600);
+  //printf_begin();
+  //Set the enable pin high (necessary for driving the motor)
   pinMode(enable, OUTPUT);
   digitalWrite(enable, HIGH);
   pinMode(m1dir, OUTPUT);
   pinMode(m2dir, OUTPUT);
   pinMode(m1speed, OUTPUT);
   pinMode(m2speed, OUTPUT);
-  
-  //initialize ultrasonic ranger
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
 
   //Define gyroscope pins
   pinMode( gyroX, INPUT);
   pinMode( gyroZ, INPUT);
 
-  //starting the radio
+  //The address is the same for both transievers
+  //byte addresses[][6] = {"8abde"};
+  //byte addresses[][6] = {"8Node","9Node"};
+  
   radio.begin();
-  
-  //initialize the APDS-9960
-  apds.init();
-  //start running the APDS-9960 light sensor (no interrupts)
-  apds.enableLightSensor(false);
-  
+  radio.setChannel(57); //Sets frequency of channel to 2400+x Hz, if x=107 Hz=2507, max = 2525Hz
+  radio.setPALevel(RF24_PA_MAX); //sets broadcast amplitude, default=max
+  //radio.openReadingPipe(1,addresses[0]);
+  radio.openReadingPipe(1,121501163909);
+  radio.startListening();
+
+  //radio.maskIRQ(1,1,0); //configure the interrupt on the comm board to switch LOW on packet acceptance
+  //starting the radio
+  /*
+  radio.begin();
   // Set the PA Level low to prevent power supply related issues since this is a
   // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_LOW);
@@ -109,6 +113,16 @@ void setup() {
   
   // Start the radio listening for data
   radio.startListening();
+
+  */
+  //initialize the APDS-9960
+  apds.init();
+  //start running the APDS-9960 light sensor (no interrupts)
+  apds.enableLightSensor(false);
+
+  //initialize US Ranger
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
   
   // Wait for initialization and calibration to finish
   delay(500);
@@ -137,7 +151,7 @@ int readCommand()
     tread = millis();
   }
   //add a timeout
-  else if((millis() - tread) > 100)
+  else if((millis() - tread) > 50)
     command = STOP;
   return command;
 }
@@ -146,7 +160,7 @@ int readCommand()
 //this will be printed on controller's lcd
 /*void sendRadio (float omega, int gyroXTemp, int gyroZTemp)
 {
-  //int num = 5;
+  int num = 5;
   //stop listening so it can send
   radio.stopListening();
   //send data
@@ -159,93 +173,95 @@ int readCommand()
 }*/
 /***********************************Line tracing***********************************/
 //the robot will read light values and perform commands based on the line color
-//if it discovers a red line it will overwrite the command to stop
-//the lineTracker will disable all commands other than A or B
 void lineTracker(int& command, bool& stopCompletely)
 {
   //check if there is an ambient light reading
   //if it fails it exits the funtion
   if(!apds.readAmbientLight(ambient_light) || !apds.readRedLight(red_light) || !apds.readGreenLight(green_light) || !apds.readBlueLight(blue_light))
     return;
-  //check if A or B button is pressed
+  //change nothing if A or B are chosen
   if(command == A || command == B)
     return;
   //stop the robot if it detects a line
   //else overwrite the command to up
-  if(green_light < 1500 || stopCompletely)
+  if(red_light < 110 || stopCompletely)
   {
+    //Serial.println(stopCompletely);
     stopCompletely = true;
     command = STOP;
   }
   else
     command = UP;
-}
-/**************************************Ultrasonic Ranger*****************************/
-//Send a pulse to activate the usRanger
-//use interrupts to get the return time
-//will overwrite the command to stop if return time is roughly < 15cm
-void usRanger(int& command)
-{
-  unsigned int dur;
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  dur = pulseIn(ECHO_PIN, HIGH, 1000);    //will return 0 if it goes over a 1100us timeout, yes 1100us not 1000us
-  //only overwrite UP commands
-  if(dur && command == UP)
-    command = STOP;
-}
+} 
 /**************************************The loop************************************/
 //This loop is designed to send a command to the motor every iteration
 // If it is before 1second, it sends o (off), afterwards it send 255(on).
 //Every 1ms it will take readings and calculate speed, then print out values
 void loop()
 {
+  //radio.printDetails();
   //get the command from the controller
   int command = readCommand();
   
-  //lineTracker function call if autonomous is set to true
+  //US Ranger ping for distance
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH, 10000);
+  cm = (duration/2) / 29.1;
+  
+  if (cm < 15 && cm > 0)
+    forwardDisable=1;
+  else
+    forwardDisable=0;
+ 
+  //the lineTracker will overwrite commands other than A or B
+  //if autonomous is enabled (autonomous = true)
   if(autonomous)
     lineTracker(command, stopCompletely);
-    
-  //usRanger function call
-  usRanger(command);
   
+  //get the command from the controller
   //give robot commands
-  switch(command)
-  {
-    case UP:  //Drive FORWARD
-      driveMotor(250, 250, LOW, LOW);
-      break;
-    case DOWN:  //Drive BACKWARDS
-      driveMotor(250, 200, HIGH, HIGH);
-      break;
-    case LEFT:  //Turn LEFT
-      driveMotor(150, 150, HIGH, LOW);
-      break;
-    case RIGHT:  //Turn RIGHT
-      driveMotor(150, 150, LOW, HIGH);
-      break;
-    case A:  //A BUTTON
-      // activate the lineTracker function
-      autonomous = true;
-      break;
-    case B:  //B BUTTON
-      //deactivate the lineTracker function
-      stopCompletely = false;
-      autonomous = false;
-      break;
-    case START:  //Start button
-      //do something
-      break;
-    case SELECT:  //Select button
-      //do something
-      break;
-    case STOP:  //Stop the robot driving
-      driveMotor(0, 0, LOW, HIGH);
-      break;
-    case ERR:  //Stop the robot and report error
-      driveMotor(0, 0, LOW, HIGH);
-      break;
+    switch(command)
+    {
+      case UP:  //Drive FORWARD
+        //Serial.println(forwardDisable);
+        if(forwardDisable==0)
+          driveMotor(200, 200, LOW, LOW);
+        else
+          driveMotor(0, 0, LOW, HIGH);
+        break;
+      case DOWN:  //Drive BACKWARDS
+        driveMotor(200, 200, HIGH, HIGH);
+        break;
+      case LEFT:  //Turn LEFT
+        driveMotor(150, 150, HIGH, LOW);
+        break;
+      case RIGHT:  //Turn RIGHT
+        driveMotor(150, 150, LOW, HIGH);
+        break;
+      case A:  //A BUTTON
+        // activate the lineTracker function
+        autonomous = true;
+        break;
+      case B:  //B BUTTON
+        //deactivate the lineTracker function
+        stopCompletely = false;
+        autonomous = false;
+        break;
+      case START:  //Start button
+        //do something
+        break;
+      case SELECT:  //Select button
+        //do something
+        break;
+      case STOP:  //Stop the robot driving
+        driveMotor(0, 0, LOW, HIGH);
+        break;
+      case ERR:  //Stop the robot and report error
+        driveMotor(0, 0, LOW, HIGH);
+        break;
     }
 }
