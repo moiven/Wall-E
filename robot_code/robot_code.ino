@@ -18,6 +18,7 @@
 #define encoderB_M1 3     //Encoder 2 for Motor 1
 #define encoderA_M2 18     //Encoder 1 for Motor 2
 #define encoderB_M2 19     //Encoder 2 for Motor 2
+#define RGBinterrupt  41
 #define gyroX       0
 #define gyroZ       1
 #define trigPin 30    //Trig
@@ -34,6 +35,7 @@
 #define SELECT      8
 #define STOP        9
 #define ERR         10
+#define SLOWUP      11
 
 // Define a variable encoderNew, as an instantaneous encoder reading
 #define encoderNew myEnc.read()
@@ -72,7 +74,7 @@ uint16_t blue_light = 0;
 
 //vars for US Ranger
 long duration, cm;
-/**************************************Setup*************************************/
+/**************************************Setup***************dri**********************/
 void setup() {
   //Serial.begin(9600);
   //printf_begin();
@@ -118,7 +120,7 @@ void setup() {
   //initialize the APDS-9960
   apds.init();
   //start running the APDS-9960 light sensor (no interrupts)
-  apds.enableLightSensor(false);
+  apds.enableLightSensor(true);
 
   //initialize US Ranger
   pinMode(trigPin, OUTPUT);
@@ -184,13 +186,15 @@ void lineTracker(int& command, bool& stopCompletely)
     return;
   //stop the robot if it detects a line
   //else overwrite the command to up
-  if(red_light < 110 || stopCompletely)
+  //if(green_light < 500 || stopCompletely)
+  if(digitalRead(RGBinterrupt)==0)
   {
     //Serial.println(stopCompletely);
     stopCompletely = true;
     command = STOP;
   }
   else
+  //    command = SLOWUP;
     command = UP;
 } 
 /**************************************The loop************************************/
@@ -229,12 +233,18 @@ void loop()
       case UP:  //Drive FORWARD
         //Serial.println(forwardDisable);
         if(forwardDisable==0)
-          driveMotor(200, 200, LOW, LOW);
+          driveMotor(255, 230, LOW, LOW);
+        else
+          driveMotor(0, 0, LOW, HIGH);
+        break;
+      case SLOWUP:  //Drive FORWARD
+        if(forwardDisable==0)
+          driveMotor(115, 100, LOW, LOW); //150
         else
           driveMotor(0, 0, LOW, HIGH);
         break;
       case DOWN:  //Drive BACKWARDS
-        driveMotor(200, 200, HIGH, HIGH);
+        driveMotor(255, 230, HIGH, HIGH);
         break;
       case LEFT:  //Turn LEFT
         driveMotor(150, 150, HIGH, LOW);
@@ -245,6 +255,7 @@ void loop()
       case A:  //A BUTTON
         // activate the lineTracker function
         autonomous = true;
+        apds.clearAmbientLightInt();
         break;
       case B:  //B BUTTON
         //deactivate the lineTracker function
